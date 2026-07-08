@@ -1,8 +1,8 @@
 # lasm-web
 
-LASM Lab homepage static export.
+LASM Lab static website export for GitHub Pages.
 
-This folder contains only the homepage and the assets it needs. It is ready to push to:
+This folder contains the full static site and the assets it needs. It is ready to push to:
 
 https://github.com/LASM-LAB/lasm-web
 
