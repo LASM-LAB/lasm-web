@@ -22,17 +22,6 @@ list:
     email: gao.prof@whu.edu.cn
     type: faculty
     avatar: images/gao_xiao.jpg
-  - name: 刘博士
-    nameEn: Dr. Liu
-    title: 博士后
-    titleEn: Postdoc
-    department: 武汉大学机器人学院
-    departmentEn: Wuhan University School of Robotics
-    research: 灵巧手、灵巧操作
-    researchEn: Dexterous Hands, Dexterous Manipulation
-    email: liu@whu.edu.cn
-    type: postdoc
-    avatar: ''
   - name: 李雪涛
     nameEn: Xuetao Li
     year: 博士研究生
@@ -150,4 +139,4 @@ list:
     type: alumni
     avatar: ''
 ---
-LASM 实验室拥有一支充满活力和创造力的研究团队，涵盖教授、研究员、博士后、博士生、硕士生和已毕业校友等多个层次。
+LASM 实验室拥有一支充满活力和创造力的研究团队，涵盖指导教师、博士生、硕士生、本科生、工程人员和已毕业校友等多个层次。
