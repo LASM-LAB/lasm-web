@@ -196,7 +196,7 @@ header nav button{display:none!important}
           var area = (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
           return { a: a, b: b, c: c, z: (a.z + b.z + c.z) / 3, color: tri[9], area: area };
         }).filter(function (face) {
-          return Math.abs(face.area) > 0.15;
+          return Math.abs(face.area) > 0.01;
         }).sort(function (a, b) {
           return a.z - b.z;
         }).forEach(function (face) {
@@ -205,19 +205,19 @@ header nav button{display:none!important}
           ctx.lineTo(face.b.x, face.b.y);
           ctx.lineTo(face.c.x, face.c.y);
           ctx.closePath();
-          ctx.globalAlpha = 0.86;
+          ctx.globalAlpha = 0.96;
           ctx.fillStyle = face.area > 0 ? shade(face.color, 12) : shade(face.color, -10);
           ctx.fill();
-          ctx.globalAlpha = 0.16;
-          ctx.strokeStyle = 'rgba(255,255,255,.55)';
-          ctx.lineWidth = 0.55;
+          ctx.globalAlpha = 0.05;
+          ctx.strokeStyle = 'rgba(255,255,255,.18)';
+          ctx.lineWidth = 0.25;
           ctx.stroke();
         });
         ctx.globalAlpha = 1;
       }
 
       if (modelPoints) {
-        modelPoints.filter(function (_point, i) { return i % 4 === 0; }).map(function (point) {
+        modelPoints.filter(function (_point, i) { return i % 7 === 0; }).map(function (point) {
           var q = project({x: point[0] * 1.12, y: point[1] * 1.12 - 0.05, z: point[2] * 1.12}, w, h);
           return { x: q.x, y: q.y, z: q.z, s: Math.max(0.55, q.k * 0.008), c: '#ffffff' };
         }).sort(function (a, b) { return a.z - b.z; }).forEach(function (p) {
