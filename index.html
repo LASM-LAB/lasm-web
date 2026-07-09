@@ -10,7 +10,10 @@ header nav button{display:none!important}
 (function () {
   function boot() {
     var canvas = document.querySelector('[data-lasm-grasp-scene]');
-    if (!canvas || canvas.dataset.ready === '1') return;
+    if (!canvas) return;
+    if (window.__lasmGraspSceneCanvas === canvas && canvas.dataset.ready === '1') return;
+    if (window.__lasmGraspSceneStop) window.__lasmGraspSceneStop();
+    window.__lasmGraspSceneCanvas = canvas;
     canvas.dataset.ready = '1';
 
     var ctx = canvas.getContext('2d');
@@ -18,6 +21,9 @@ header nav button{display:none!important}
 
     var state = { yaw: -0.55, pitch: -0.18, dragging: false, lastX: 0, lastY: 0, idle: true };
     var start = performance.now();
+    var running = true;
+    var frameId = 0;
+    var modelMesh = null;
     var modelPoints = null;
     var modelFailed = false;
     var particles = [];
@@ -34,17 +40,23 @@ header nav button{display:none!important}
       });
     }
 
-    fetch('/lasm-web/media/content-home-models-ur10e_shadow_points.json')
+    fetch('/lasm-web/media/content-home-models-ur10e_shadow_mesh.json')
       .then(function (response) {
         if (!response.ok) throw new Error('Model asset failed to load');
         return response.json();
       })
       .then(function (data) {
+        if (data && Array.isArray(data.triangles)) modelMesh = data;
         if (data && Array.isArray(data.points)) modelPoints = data.points;
       })
       .catch(function () {
         modelFailed = true;
       });
+
+    window.__lasmGraspSceneStop = function () {
+      running = false;
+      if (frameId) cancelAnimationFrame(frameId);
+    };
 
     function resize() {
       var rect = canvas.getBoundingClientRect();
@@ -176,30 +188,47 @@ header nav button{display:none!important}
       line3({x:-1.4,y:-1.1,z:-0.72},{x:1.4,y:-1.1,z:-0.72},5,'rgba(255,255,255,.18)',w,h);
       line3({x:-1.4,y:-1.1,z:0.72},{x:1.4,y:-1.1,z:0.72},5,'rgba(255,255,255,.10)',w,h);
 
-      var rendered = modelPoints.map(function (point, i) {
-        var q = project({
-          x: point[0] * 1.1,
-          y: point[1] * 1.1 - 0.06,
-          z: point[2] * 1.1
-        }, w, h);
-        return {
-          x: q.x,
-          y: q.y,
-          z: q.z,
-          s: Math.max(0.7, q.k * 0.016),
-          c: point[3],
-          a: 0.68 + (i % 7) * 0.035
-        };
-      }).sort(function (a, b) { return a.z - b.z; });
+      if (modelMesh && modelMesh.triangles) {
+        modelMesh.triangles.map(function (tri) {
+          var a = project({x: tri[0] * 1.12, y: tri[1] * 1.12 - 0.05, z: tri[2] * 1.12}, w, h);
+          var b = project({x: tri[3] * 1.12, y: tri[4] * 1.12 - 0.05, z: tri[5] * 1.12}, w, h);
+          var c = project({x: tri[6] * 1.12, y: tri[7] * 1.12 - 0.05, z: tri[8] * 1.12}, w, h);
+          var area = (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
+          return { a: a, b: b, c: c, z: (a.z + b.z + c.z) / 3, color: tri[9], area: area };
+        }).filter(function (face) {
+          return Math.abs(face.area) > 0.15;
+        }).sort(function (a, b) {
+          return a.z - b.z;
+        }).forEach(function (face) {
+          ctx.beginPath();
+          ctx.moveTo(face.a.x, face.a.y);
+          ctx.lineTo(face.b.x, face.b.y);
+          ctx.lineTo(face.c.x, face.c.y);
+          ctx.closePath();
+          ctx.globalAlpha = 0.86;
+          ctx.fillStyle = face.area > 0 ? shade(face.color, 12) : shade(face.color, -10);
+          ctx.fill();
+          ctx.globalAlpha = 0.16;
+          ctx.strokeStyle = 'rgba(255,255,255,.55)';
+          ctx.lineWidth = 0.55;
+          ctx.stroke();
+        });
+        ctx.globalAlpha = 1;
+      }
 
-      rendered.forEach(function (p) {
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.s, 0, Math.PI * 2);
-        ctx.globalAlpha = p.a;
-        ctx.fillStyle = p.c;
-        ctx.fill();
-      });
-      ctx.globalAlpha = 1;
+      if (modelPoints) {
+        modelPoints.filter(function (_point, i) { return i % 4 === 0; }).map(function (point) {
+          var q = project({x: point[0] * 1.12, y: point[1] * 1.12 - 0.05, z: point[2] * 1.12}, w, h);
+          return { x: q.x, y: q.y, z: q.z, s: Math.max(0.55, q.k * 0.008), c: '#ffffff' };
+        }).sort(function (a, b) { return a.z - b.z; }).forEach(function (p) {
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.s, 0, Math.PI * 2);
+          ctx.globalAlpha = 0.22;
+          ctx.fillStyle = p.c;
+          ctx.fill();
+        });
+        ctx.globalAlpha = 1;
+      }
 
       var target = [];
       for (var i = 0; i < 120; i += 1) {
@@ -225,6 +254,7 @@ header nav button{display:none!important}
     }
 
     function draw() {
+      if (!running || !canvas.isConnected) return;
       var rect = canvas.getBoundingClientRect();
       var w = rect.width, h = rect.height;
       var t = (performance.now() - start) / 1000;
@@ -238,7 +268,7 @@ header nav button{display:none!important}
       ctx.fillStyle = bg;
       ctx.fillRect(0, 0, w, h);
 
-      if (modelPoints) {
+      if (modelMesh || modelPoints) {
         drawModel(w, h, t);
       } else if (modelFailed) {
         drawFallback(w, h, t);
@@ -256,7 +286,7 @@ header nav button{display:none!important}
         ctx.globalAlpha = 1;
       }
 
-      requestAnimationFrame(draw);
+      frameId = requestAnimationFrame(draw);
     }
 
     canvas.addEventListener('pointerdown', function (event) {
@@ -283,6 +313,8 @@ header nav button{display:none!important}
     resize();
     draw();
   }
+
+  window.LASM_BOOT_GRASP_SCENE = boot;
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', boot);
